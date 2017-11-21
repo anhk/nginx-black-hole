@@ -22,7 +22,9 @@ static ngx_int_t ngx_http_bh_content_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    ngx_http_discard_request_body(r);
+    if ((rc = ngx_http_discard_request_body(r)) != NGX_OK) {
+        return rc;
+    }
     r->headers_out.status = NGX_HTTP_OK;
     r->headers_out.content_length_n = 0;
     r->header_only = 1;
@@ -31,7 +33,7 @@ static ngx_int_t ngx_http_bh_content_handler(ngx_http_request_t *r)
     } else {
         r->keepalive = 1;
     }
-    return rc;
+    return NGX_OK;
 }
 
 static ngx_int_t ngx_http_bh_init_post_config(ngx_conf_t *cf)
