@@ -40,14 +40,13 @@ static ngx_int_t do_send_header(ngx_http_request_t *r)
         r->headers_out.status = blcf->code;
     }
     r->headers_out.content_length_n = blcf->response.len;
+    r->headers_out.content_type = blcf->ct;
     r->keepalive = 1;
 
     if (blcf->response.len == 0) {
         r->header_only = 1;
         return ngx_http_send_header(r);
     }
-
-    r->headers_out.content_type = blcf->ct;
 
     if ((rc = ngx_http_send_header(r)) != NGX_OK) {
         return rc;
