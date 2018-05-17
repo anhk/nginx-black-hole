@@ -39,8 +39,13 @@ static ngx_int_t do_send_header(ngx_http_request_t *r)
     } else {
         r->headers_out.status = blcf->code;
     }
+
     r->headers_out.content_length_n = blcf->response.len;
-    r->headers_out.content_type = blcf->ct;
+
+    if (blcf->ct.len != 0) {
+        r->headers_out.content_type = blcf->ct;
+    }
+
     r->keepalive = 1;
 
     if (blcf->response.len == 0) {
