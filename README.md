@@ -7,6 +7,7 @@ put command: `black-hole on;` in your location field.
 
 ## Configure
 
+| Command | set | description |
 | -- | -- | -- |
 | black-hole | flag: on/off | enable or disable `black-hole` module |
 | black-hole-code | int: 200, 201, etc.. | Http response code |
