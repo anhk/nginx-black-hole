@@ -31,7 +31,7 @@ static ngx_int_t do_send_header(ngx_http_request_t *r)
     ngx_chain_t out;
 
     if ((blcf = ngx_http_get_module_loc_conf(r, ngx_http_bh_module)) == NULL) {
-        return NGX_DECLINED;
+        return NGX_ERROR;
     }
 
     if (blcf->code == NGX_CONF_UNSET) {
