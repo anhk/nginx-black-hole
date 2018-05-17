@@ -15,6 +15,9 @@
 
 typedef struct _ngx_http_bh_loc_conf_s {
     ngx_flag_t enable;
+    ngx_int_t code;
+    ngx_str_t response;
+    ngx_str_t ct;           /** Content-Type **/
 } ngx_http_bh_loc_conf_t;
 
 extern ngx_module_t ngx_http_bh_module;
@@ -22,11 +25,44 @@ extern ngx_module_t ngx_http_bh_module;
 
 static ngx_int_t do_send_header(ngx_http_request_t *r)
 {
-    r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = 0;
-    r->header_only = 1;
+    ngx_http_bh_loc_conf_t *blcf;
+    ngx_int_t rc;
+    ngx_buf_t *b;
+    ngx_chain_t out;
+
+    if ((blcf = ngx_http_get_module_loc_conf(r, ngx_http_bh_module)) == NULL) {
+        return NGX_DECLINED;
+    }
+
+    if (blcf->code == NGX_CONF_UNSET) {
+        r->headers_out.status = NGX_HTTP_OK;
+    } else {
+        r->headers_out.status = blcf->code;
+    }
+    r->headers_out.content_length_n = blcf->response.len;
     r->keepalive = 1;
-    return ngx_http_send_header(r);
+
+    if (blcf->response.len == 0) {
+        r->header_only = 1;
+        return ngx_http_send_header(r);
+    }
+
+    r->headers_out.content_type = blcf->ct;
+
+    if ((rc = ngx_http_send_header(r)) != NGX_OK) {
+        return rc;
+    }
+
+    if ((b = ngx_create_temp_buf(r->pool, blcf->response.len)) == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+    ngx_memcpy(b->pos, blcf->response.data, blcf->response.len);
+    b->last = b->pos + blcf->response.len;
+    b->last_buf = 1;
+
+    out.buf = b;
+    out.next = NULL;
+    return ngx_http_output_filter(r, &out);
 }
 
 
@@ -334,6 +370,9 @@ static void *ngx_http_bh_create_loc_conf(ngx_conf_t *cf)
         return NULL;
     }
     blcf->enable = NGX_CONF_UNSET;
+    blcf->code = NGX_CONF_UNSET;
+    blcf->response.data = NULL;
+    blcf->response.len = 0;
     return blcf;
 }
 
@@ -344,6 +383,27 @@ static ngx_command_t ngx_http_bh_commands[] = {
         ngx_conf_set_flag_slot,
         NGX_HTTP_LOC_CONF_OFFSET,
         offsetof(ngx_http_bh_loc_conf_t, enable),
+        NULL },
+
+    { ngx_string("black-hole-code"),
+        NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+        ngx_conf_set_num_slot,
+        NGX_HTTP_LOC_CONF_OFFSET,
+        offsetof(ngx_http_bh_loc_conf_t, code),
+        NULL },
+
+    { ngx_string("black-hole-response"),
+        NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+        ngx_conf_set_str_slot,
+        NGX_HTTP_LOC_CONF_OFFSET,
+        offsetof(ngx_http_bh_loc_conf_t, response),
+        NULL },
+
+    { ngx_string("black-hole-content-type"),
+        NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+        ngx_conf_set_str_slot,
+        NGX_HTTP_LOC_CONF_OFFSET,
+        offsetof(ngx_http_bh_loc_conf_t, ct),
         NULL },
 
     ngx_null_command
